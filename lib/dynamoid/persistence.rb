@@ -14,7 +14,8 @@ module Dynamoid
     module ClassMethods
 
       def table_name
-        @table_name ||= "#{Dynamoid::Config.namespace}_#{options[:name] || base_class.name.split('::').last.downcase.pluralize}"
+        namespace = Dynamoid::Config.namespace.blank? ? '' : Dynamoid::Config.namespace + '_'
+        @table_name ||= "#{namespace}#{options[:name] || base_class.name.split('::').last.downcase.pluralize}"
       end
 
       # Creates a table.
@@ -155,7 +156,7 @@ module Dynamoid
     # @since 0.2.0
     def save(options = {})
       self.class.create_table
-      
+
       if new_record?
         conditions = { :unless_exists => [self.class.hash_key]}
         conditions[:unless_exists] << range_key if(range_key)
@@ -169,8 +170,8 @@ module Dynamoid
     end
 
     #
-    # update!() will increment the lock_version if the table has the column, but will not check it. Thus, a concurrent save will 
-    # never cause an update! to fail, but an update! may cause a concurrent save to fail. 
+    # update!() will increment the lock_version if the table has the column, but will not check it. Thus, a concurrent save will
+    # never cause an update! to fail, but an update! may cause a concurrent save to fail.
     #
     #
     def update!(conditions = {}, &block)
@@ -257,7 +258,7 @@ module Dynamoid
         raise ArgumentError, "Unknown type #{options[:type]}"
       end
     end
-    
+
     # Persist the object into the datastore. Assign it an id first if it doesn't have one; then afterwards,
     # save its indexes.
     #
@@ -265,7 +266,7 @@ module Dynamoid
     def persist(conditions = nil)
       run_callbacks(:save) do
         self.hash_key = SecureRandom.uuid if self.hash_key.nil? || self.hash_key.blank?
-        
+
         # Add an exists check to prevent overwriting existing records with new ones
         if(new_record?)
           conditions ||= {}
@@ -276,7 +277,7 @@ module Dynamoid
         if(self.class.attributes[:lock_version])
           conditions ||= {}
           raise "Optimistic locking cannot be used with Partitioning" if(Dynamoid::Config.partitioning)
-          self.lock_version = (lock_version || 0) + 1 
+          self.lock_version = (lock_version || 0) + 1
           #Uses the original lock_version value from ActiveModel::Dirty in case user changed lock_version manually
           (conditions[:if] ||= {})[:lock_version] = changes[:lock_version][0] if(changes[:lock_version][0])
         end
